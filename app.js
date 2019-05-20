@@ -1,3 +1,4 @@
+require('dotenv').config()
 var mongoose = require('mongoose');
 
 var createError = require('http-errors');
@@ -7,10 +8,11 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 
 var deviceRouter = require('./routes/devices');
+var tokensRouter = require('./routes/tokens')
 
 
 var app = express();
-mongoose.connect('mongodb://iot:iot@localhost:27017/iothub', { useNewUrlParser: true })
+mongoose.connect(process.env.MONGODB_URL, { useNewUrlParser: true })
 
 
 // view engine setup
@@ -24,6 +26,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/devices', deviceRouter);
+app.use('/tokens', tokensRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
