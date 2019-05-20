@@ -9,6 +9,7 @@ var logger = require('morgan');
 
 var deviceRouter = require('./routes/devices');
 var tokensRouter = require('./routes/tokens')
+var webHookeRouter = require('./routes/emqx_web_hook')
 
 
 var app = express();
@@ -26,7 +27,8 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/devices', deviceRouter);
-app.use('/tokens', tokensRouter)
+app.use('/tokens', tokensRouter);
+app.use('/emqx_web_hook', webHookeRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
