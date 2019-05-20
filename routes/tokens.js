@@ -10,7 +10,7 @@ router.post("/", function (_, res) {
     var username = shortid.generate()
     var password = jwt.sign({
         username: username,
-        exp: Math.floor(Date.now() / 1000) + 1000 * 10000
+        exp: Math.floor(Date.now() / 1000) + 10
     }, jwtSecret)
     res.json({username: username, password: password})
 })
