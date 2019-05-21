@@ -23,6 +23,9 @@ const deviceSchema = new Schema({
         type: String,
         required: true,
     },
+
+    //可接入状态
+    status: String
 })
 
 deviceSchema.methods.toJSONObject = function () {

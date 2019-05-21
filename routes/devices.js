@@ -3,6 +3,7 @@ var Device = require("../models/device")
 var shortid = require("shortid")
 var Connection = require("../models/connection")
 var router = express.Router();
+const emqxService = require("../services/emqx_service")
 
 router.post("/", function (req, res) {
     var productName = req.body.product_name
@@ -14,7 +15,8 @@ router.post("/", function (req, res) {
         product_name: productName,
         device_name: deviceName,
         secret: secret,
-        broker_username: brokerUsername
+        broker_username: brokerUsername,
+        status: "active"
     })
 
     device.save(function (err) {
@@ -48,6 +50,28 @@ router.get("/:productName/:deviceName", function (req, res) {
     })
 })
 
+router.delete("/:productName/:deviceName", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    Device.findOneAndDelete({"product_name": productName, "device_name": deviceName}).exec(function (err, device) {
+        if (err) {
+            res.send(err)
+        } else {
+            if (device != null) {
+                Connection.find({device: device._id}).exec(function (err, connections) {
+                    connections.forEach(function (conn) {
+                        emqxService.disconnectClient(conn.client_id)
+                    })
+                })
+                Connection.deleteMany({device: device._id})
+                res.status(200).send("ok")
+            } else {
+                res.status(404).json({error: "Not Found"})
+            }
+        }
+    })
+})
+
 router.get("/:productName", function (req, res) {
     var productName = req.params.productName
     Device.find({"product_name": productName}, function (err, devices) {
@@ -58,6 +82,37 @@ router.get("/:productName", function (req, res) {
                 return device.toJSONObject()
             }))
 
+        }
+    })
+})
+
+router.put("/:productName/:deviceName/suspend", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    Device.findOneAndUpdate({"product_name": productName, "device_name": deviceName},
+        {status: "suspended"}, {useFindAndModify: false}).exec(function (err, device) {
+        if (err) {
+            res.send(err)
+        } else {
+            Connection.find({device: device._id}).exec(function (err, connections) {
+                connections.forEach(function (conn) {
+                    emqxService.disconnectClient(conn.client_id)
+                })
+            })
+            res.status(200).send("ok")
+        }
+    })
+})
+
+router.put("/:productName/:deviceName/resume", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    Device.findOneAndUpdate({"product_name": productName, "device_name": deviceName},
+        {status: "active"}, {useFindAndModify: false}).exec(function (err) {
+        if (err) {
+            res.send(err)
+        } else {
+            res.status(200).send("ok")
         }
     })
 })
