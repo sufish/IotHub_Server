@@ -1,6 +1,7 @@
 var express = require('express');
 var Device = require("../models/device")
 var shortid = require("shortid")
+var Connection = require("../models/connection")
 var router = express.Router();
 
 router.post("/", function (req, res) {
@@ -28,12 +29,18 @@ router.post("/", function (req, res) {
 router.get("/:productName/:deviceName", function (req, res) {
     var productName = req.params.productName
     var deviceName = req.params.deviceName
-    Device.findOne({"product_name": productName, "device_name": deviceName}, function (err, device) {
+    Device.findOne({"product_name": productName, "device_name": deviceName}).exec(function (err, device) {
         if (err) {
             res.send(err)
         } else {
             if (device != null) {
-                res.json(device.toJSONObject())
+                Connection.find({device: device._id}, function (_, connections) {
+                    res.json(Object.assign(device.toJSONObject(), {
+                        connections: connections.map(function (conn) {
+                            return conn.toJSONObject()
+                        })
+                    }))
+                })
             } else {
                 res.status(404).json({error: "Not Found"})
             }
