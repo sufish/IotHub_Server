@@ -1,6 +1,9 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var Connection = require('./connection')
+var DeviceACL = require("../models/device_acl")
+const emqxService = require("../services/emqx_service")
+
 
 const deviceSchema = new Schema({
     //ProductName
@@ -70,6 +73,44 @@ deviceSchema.statics.removeConnection = function (event) {
         }
     })
 }
+
+deviceSchema.methods.getACLRule = function () {
+    const publish = []
+    const subscribe = []
+    const pubsub = []
+    return {
+        publish: publish,
+        subscribe: subscribe,
+        pubsub: pubsub
+    }
+}
+
+deviceSchema.methods.disconnect = function(){
+    Connection.find({device: this._id}).exec(function (err, connections) {
+        connections.forEach(function (conn) {
+            emqxService.disconnectClient(conn.client_id)
+        })
+    })
+}
+
+deviceSchema.post("save", function (device, next) {
+    var aclRule = device.getACLRule()
+    var deviceACL = new DeviceACL({
+        broker_username: device.broker_username,
+        publish: aclRule.publish,
+        subscribe: aclRule.subscribe,
+        pubsub: aclRule.pubsub
+    })
+    deviceACL.save(function () {
+        next()
+    })
+})
+
+deviceSchema.post("remove", function (device, next) {
+    Connection.deleteMany({device: device._id}).exec()
+    DeviceACL.deleteMany({broker_username: device.broker_username}).exec()
+    next()
+})
 
 const Device = mongoose.model("Device", deviceSchema);
 

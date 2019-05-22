@@ -1,9 +1,9 @@
 var express = require('express');
 var Device = require("../models/device")
 var shortid = require("shortid")
-var Connection = require("../models/connection")
 var router = express.Router();
-const emqxService = require("../services/emqx_service")
+var Connection = require('./connection')
+
 
 router.post("/", function (req, res) {
     var productName = req.body.product_name
@@ -53,17 +53,13 @@ router.get("/:productName/:deviceName", function (req, res) {
 router.delete("/:productName/:deviceName", function (req, res) {
     var productName = req.params.productName
     var deviceName = req.params.deviceName
-    Device.findOneAndDelete({"product_name": productName, "device_name": deviceName}).exec(function (err, device) {
+    Device.findOne({"product_name": productName, "device_name": deviceName}).exec(function (err, device) {
         if (err) {
             res.send(err)
         } else {
             if (device != null) {
-                Connection.find({device: device._id}).exec(function (err, connections) {
-                    connections.forEach(function (conn) {
-                        emqxService.disconnectClient(conn.client_id)
-                    })
-                })
-                Connection.deleteMany({device: device._id})
+                device.disconnect()
+                device.remove()
                 res.status(200).send("ok")
             } else {
                 res.status(404).json({error: "Not Found"})
@@ -94,11 +90,9 @@ router.put("/:productName/:deviceName/suspend", function (req, res) {
         if (err) {
             res.send(err)
         } else {
-            Connection.find({device: device._id}).exec(function (err, connections) {
-                connections.forEach(function (conn) {
-                    emqxService.disconnectClient(conn.client_id)
-                })
-            })
+            if (device != null) {
+                device.disconnect()
+            }
             res.status(200).send("ok")
         }
     })
