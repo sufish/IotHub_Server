@@ -2,14 +2,15 @@ var express = require('express');
 var Device = require("../models/device")
 var shortid = require("shortid")
 var router = express.Router();
-var Connection = require('./connection')
+var Connection = require('../models/connection')
 
 
 router.post("/", function (req, res) {
     var productName = req.body.product_name
     var deviceName = shortid.generate();
     var secret = shortid.generate();
-    var brokerUsername = `${deviceName}@${productName}`
+    var brokerUsername = `${productName}/${deviceName}`
+
 
     var device = new Device({
         product_name: productName,

@@ -40,8 +40,8 @@ deviceSchema.methods.toJSONObject = function () {
 }
 
 deviceSchema.statics.addConnection = function (event) {
-    var username_arr = event.username.split("@")
-    this.findOne({product_name: username_arr[1], device_name: username_arr[0]}, function (err, device) {
+    var username_arr = event.username.split("/")
+    this.findOne({product_name: username_arr[0], device_name: username_arr[1]}, function (err, device) {
         if (err == null && device != null) {
             Connection.findOneAndUpdate({
                 client_id: event.client_id,
@@ -62,8 +62,8 @@ deviceSchema.statics.addConnection = function (event) {
 }
 
 deviceSchema.statics.removeConnection = function (event) {
-    var username_arr = event.username.split("@")
-    this.findOne({product_name: username_arr[1], device_name: username_arr[0]}, function (err, device) {
+    var username_arr = event.username.split("/")
+    this.findOne({product_name: username_arr[0], device_name: username_arr[1]}, function (err, device) {
         if (err == null && device != null) {
             Connection.findOneAndUpdate({client_id: event.client_id, device: device._id},
                 {
