@@ -16,6 +16,8 @@
     "shortid": "^2.2.14",
     "jsonwebtoken": "^8.5.1",
     "dotenv": "^8.0.0",
-    "request": "^2.88.0"
+    "request": "^2.88.0",
+    "path-to-regexp": "^3.0.0",
+    "redis": "^2.8.0"
   }
 }

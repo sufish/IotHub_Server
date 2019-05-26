@@ -75,7 +75,9 @@ deviceSchema.statics.removeConnection = function (event) {
 }
 
 deviceSchema.methods.getACLRule = function () {
-    const publish = []
+    const publish = [
+        `upload_data/${this.product_name}/${this.device_name}/+/+`
+    ]
     const subscribe = []
     const pubsub = []
     return {

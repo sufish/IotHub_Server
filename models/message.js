@@ -6,7 +6,8 @@ const messageSchema = new Schema({
     product_name: String,
     device_name: String,
     data_type: String,
-    payload: Buffer
+    payload: Buffer,
+    sent_at: Number
 })
 
 const Message = mongoose.model("Message", messageSchema);
