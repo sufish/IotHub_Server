@@ -18,6 +18,8 @@
     "dotenv": "^8.0.0",
     "request": "^2.88.0",
     "path-to-regexp": "^3.0.0",
-    "redis": "^2.8.0"
+    "redis": "^2.8.0",
+    "amqplib": "^0.5.3",
+    "bson": "^4.0.2"
   }
 }

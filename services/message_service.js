@@ -1,6 +1,7 @@
 const redisClient = require("../models/redis")
 const pathToRegexp = require('path-to-regexp')
 const Message = require("../models/message")
+const NotifyService  = require("./notify_service")
 
 class MessageService {
     static checkMessageDuplication(messageId, callback) {
@@ -45,6 +46,7 @@ class MessageService {
             sent_at: ts
         })
         message.save()
+        NotifyService.NotifyUploadData(message)
     }
 }
 
