@@ -1,7 +1,8 @@
 const redisClient = require("../models/redis")
 const pathToRegexp = require('path-to-regexp')
 const Message = require("../models/message")
-const NotifyService  = require("./notify_service")
+const NotifyService = require("./notify_service")
+const Device = require("../models/device")
 
 class MessageService {
     static checkMessageDuplication(messageId, callback) {
@@ -18,7 +19,9 @@ class MessageService {
 
     static dispatchMessage({topic, payload, ts} = {}) {
         var dataTopicRule = "upload_data/:productName/:deviceName/:dataType/:messageId";
+        var statusTopicRule = "update_status/:productName/:deviceName/:messageId"
         const topicRegx = pathToRegexp(dataTopicRule)
+        const statusRegx = pathToRegexp(statusTopicRule)
         var result = null;
         if ((result = topicRegx.exec(topic)) != null) {
             this.checkMessageDuplication(result[4], function (isDup) {
@@ -30,6 +33,17 @@ class MessageService {
                         messageId: result[4],
                         ts: ts,
                         payload: new Buffer(payload, 'base64')
+                    })
+                }
+            })
+        } else if ((result = statusRegx.exec(topic)) != null) {
+            this.checkMessageDuplication(result[3], function (isDup) {
+                if (!isDup) {
+                    MessageService.handleUpdateStatus({
+                        productName: result[1],
+                        deviceName: result[2],
+                        deviceStatus: new Buffer(payload, 'base64').toString(),
+                        ts: ts
                     })
                 }
             })
@@ -46,7 +60,22 @@ class MessageService {
             sent_at: ts
         })
         message.save()
-        NotifyService.NotifyUploadData(message)
+        NotifyService.notifyUploadData(message)
+    }
+
+    static handleUpdateStatus({productName, deviceName, deviceStatus, ts}) {
+        Device.findOneAndUpdate({product_name: productName, device_name: deviceName,
+            "$or":[{last_status_update:{"$exists":false}}, {last_status_update:{"$lt":ts}}]
+            },
+            {device_status: deviceStatus, last_status_update: ts}, {useFindAndModify: false}).exec(function (error, device) {
+            if (device != null) {
+                NotifyService.notifyUpdateStatus({
+                    productName: productName,
+                    deviceName: deviceName,
+                    deviceStatus: deviceStatus
+                })
+            }
+        })
     }
 }
 

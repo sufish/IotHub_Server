@@ -28,14 +28,18 @@ const deviceSchema = new Schema({
     },
 
     //可接入状态
-    status: String
+    status: String,
+
+    device_status: String,
+    last_status_update: Number
 })
 
 deviceSchema.methods.toJSONObject = function () {
     return {
         product_name: this.product_name,
         device_name: this.device_name,
-        secret: this.secret
+        secret: this.secret,
+        device_status: JSON.parse(this.device_status)
     }
 }
 
@@ -76,7 +80,8 @@ deviceSchema.statics.removeConnection = function (event) {
 
 deviceSchema.methods.getACLRule = function () {
     const publish = [
-        `upload_data/${this.product_name}/${this.device_name}/+/+`
+        `upload_data/${this.product_name}/${this.device_name}/+/+`,
+        `update_status/${this.product_name}/${this.device_name}/+`
     ]
     const subscribe = []
     const pubsub = []
@@ -87,7 +92,7 @@ deviceSchema.methods.getACLRule = function () {
     }
 }
 
-deviceSchema.methods.disconnect = function(){
+deviceSchema.methods.disconnect = function () {
     Connection.find({device: this._id}).exec(function (err, connections) {
         connections.forEach(function (conn) {
             emqxService.disconnectClient(conn.client_id)
