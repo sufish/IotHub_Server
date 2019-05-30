@@ -3,6 +3,7 @@ var Schema = mongoose.Schema;
 var Connection = require('./connection')
 var DeviceACL = require("../models/device_acl")
 const emqxService = require("../services/emqx_service")
+const influxDBService = require("../services/influxdb_service")
 
 
 const deviceSchema = new Schema({
@@ -45,7 +46,9 @@ deviceSchema.methods.toJSONObject = function () {
 
 deviceSchema.statics.addConnection = function (event) {
     var username_arr = event.username.split("/")
-    this.findOne({product_name: username_arr[0], device_name: username_arr[1]}, function (err, device) {
+    let productName = username_arr[0];
+    let deviceName = username_arr[1];
+    this.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
         if (err == null && device != null) {
             Connection.findOneAndUpdate({
                 client_id: event.client_id,
@@ -60,6 +63,12 @@ deviceSchema.statics.addConnection = function (event) {
                 conn_ack: event.conn_ack,
                 device: device._id
             }, {upsert: true, useFindAndModify: false, new: true}).exec()
+            influxDBService.writeConnectionData({
+                productName: productName,
+                deviceName: deviceName,
+                connected: true,
+                ts: event.connected_at
+            })
         }
     })
 
@@ -67,13 +76,20 @@ deviceSchema.statics.addConnection = function (event) {
 
 deviceSchema.statics.removeConnection = function (event) {
     var username_arr = event.username.split("/")
-    this.findOne({product_name: username_arr[0], device_name: username_arr[1]}, function (err, device) {
+    let productName = username_arr[0];
+    let deviceName = username_arr[1];
+    this.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
         if (err == null && device != null) {
             Connection.findOneAndUpdate({client_id: event.client_id, device: device._id},
                 {
                     connected: false,
                     disconnect_at: Math.floor(Date.now() / 1000)
                 }, {useFindAndModify: false}).exec()
+            influxDBService.writeConnectionData({
+                productName: productName,
+                deviceName: deviceName,
+                connected: false
+            })
         }
     })
 }
