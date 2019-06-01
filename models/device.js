@@ -4,6 +4,7 @@ var Connection = require('./connection')
 var DeviceACL = require("../models/device_acl")
 const emqxService = require("../services/emqx_service")
 const influxDBService = require("../services/influxdb_service")
+const ObjectId = require('bson').ObjectID;
 
 
 const deviceSchema = new Schema({
@@ -97,7 +98,8 @@ deviceSchema.statics.removeConnection = function (event) {
 deviceSchema.methods.getACLRule = function () {
     const publish = [
         `upload_data/${this.product_name}/${this.device_name}/+/+`,
-        `update_status/${this.product_name}/${this.device_name}/+`
+        `update_status/${this.product_name}/${this.device_name}/+`,
+        `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`
     ]
     const subscribe = []
     const pubsub = []
@@ -134,6 +136,16 @@ deviceSchema.post("remove", function (device, next) {
     DeviceACL.deleteMany({broker_username: device.broker_username}).exec()
     next()
 })
+
+deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl = undefined}) {
+    var requestId = new ObjectId().toHexString()
+    var topic = `cmd/${this.product_name}/${this.device_name}/${commandName}/${encoding}/${requestId}`
+    if (ttl != null) {
+        topic = `${topic}/${Math.floor(Date.now() / 1000) + ttl}`
+    }
+    emqxService.publishTo({topic: topic, payload: data})
+    return requestId
+}
 
 const Device = mongoose.model("Device", deviceSchema);
 

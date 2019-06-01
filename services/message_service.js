@@ -20,8 +20,10 @@ class MessageService {
     static dispatchMessage({topic, payload, ts} = {}) {
         var dataTopicRule = "upload_data/:productName/:deviceName/:dataType/:messageId";
         var statusTopicRule = "update_status/:productName/:deviceName/:messageId"
+        var cmdRespRule = "cmd_resp/:productName/:deviceName/:commandName/:requestId/:messageId"
         const topicRegx = pathToRegexp(dataTopicRule)
         const statusRegx = pathToRegexp(statusTopicRule)
+        const cmdRespRegx = pathToRegexp(cmdRespRule)
         var result = null;
         if ((result = topicRegx.exec(topic)) != null) {
             this.checkMessageDuplication(result[4], function (isDup) {
@@ -47,6 +49,19 @@ class MessageService {
                     })
                 }
             })
+        } else if ((result = cmdRespRegx.exec(topic)) != null) {
+            this.checkMessageDuplication(result[5], function (isDup) {
+                if (!isDup) {
+                    MessageService.handleCommandResp({
+                        productName: result[1],
+                        deviceName: result[2],
+                        ts: ts,
+                        command: result[3],
+                        requestId: result[4],
+                        payload: new Buffer(payload, 'base64')
+                    })
+                }
+            })
         }
     }
 
@@ -64,10 +79,14 @@ class MessageService {
     }
 
     static handleUpdateStatus({productName, deviceName, deviceStatus, ts}) {
-        Device.findOneAndUpdate({product_name: productName, device_name: deviceName,
-            "$or":[{last_status_update:{"$exists":false}}, {last_status_update:{"$lt":ts}}]
+        Device.findOneAndUpdate({
+                product_name: productName, device_name: deviceName,
+                "$or": [{last_status_update: {"$exists": false}}, {last_status_update: {"$lt": ts}}]
             },
-            {device_status: deviceStatus, last_status_update: ts}, {useFindAndModify: false}).exec(function (error, device) {
+            {
+                device_status: deviceStatus,
+                last_status_update: ts
+            }, {useFindAndModify: false}).exec(function (error, device) {
             if (device != null) {
                 NotifyService.notifyUpdateStatus({
                     productName: productName,
@@ -75,6 +94,17 @@ class MessageService {
                     deviceStatus: deviceStatus
                 })
             }
+        })
+    }
+
+    static handleCommandResp({productName, deviceName, command, requestId, ts, payload}) {
+        NotifyService.notifyCommandResp({
+            productName: productName,
+            deviceName: deviceName,
+            command: command,
+            requestId: requestId,
+            ts: ts,
+            payload: payload
         })
     }
 }

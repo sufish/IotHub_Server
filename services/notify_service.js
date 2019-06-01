@@ -2,6 +2,7 @@ const bson = require('bson')
 var amqp = require('amqplib/callback_api');
 var uploadDataExchange = "iothub.events.upload_data"
 var updateStatusExchange = "iothub.events.update_status"
+var commandRespExchange = "iothub.events.cmd_resp"
 var currentChannel = null;
 amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
     if (error0) {
@@ -13,6 +14,8 @@ amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
             } else {
                 currentChannel = channel;
                 channel.assertExchange(uploadDataExchange, 'direct', {durable: true})
+                channel.assertExchange(updateStatusExchange, 'direct', {durable: true})
+                channel.assertExchange(commandRespExchange, 'direct', {durable: true})
             }
         });
     }
@@ -43,6 +46,19 @@ class NotifyService {
             currentChannel.publish(updateStatusExchange, productName, data, {
                 persistent: true
             })
+        }
+    }
+
+    static notifyCommandResp({productName, deviceName, command, requestId, ts, payload}){
+        var data = bson.serialize({
+            device_name: deviceName,
+            command: command,
+            request_id: requestId,
+            send_at: ts,
+            payload: payload
+        })
+        if(currentChannel != null){
+            currentChannel.publish(commandRespExchange, productName, data)
         }
     }
 }
