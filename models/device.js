@@ -140,8 +140,20 @@ deviceSchema.post("remove", function (device, next) {
 })
 
 deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl = undefined, commandType="cmd"}) {
+    return Device.sendCommand({
+        productName: this.product_name,
+        deviceName: this.device_name,
+        commandName: commandName,
+        data: data,
+        encoding: encoding,
+        ttl: ttl,
+        commandType: commandType
+    })
+}
+
+deviceSchema.statics.sendCommand = function ({productName, deviceName, commandName, data, encoding="plain", ttl = undefined, commandType="cmd"}) {
     var requestId = new ObjectId().toHexString()
-    var topic = `${commandType}/${this.product_name}/${this.device_name}/${commandName}/${encoding}/${requestId}`
+    var topic = `${commandType}/${productName}/${deviceName}/${commandName}/${encoding}/${requestId}`
     if (ttl != null) {
         topic = `${topic}/${Math.floor(Date.now() / 1000) + ttl}`
     }

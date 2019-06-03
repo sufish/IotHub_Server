@@ -77,19 +77,45 @@ class MessageService {
                         productName: result[1],
                         deviceName: result[2],
                         resource: result[3],
-                        payload: payload
+                        payload: payload,
+                        ts: ts
                     })
                 }
             })
         }
     }
 
-    static handleDataRequest({productName, deviceName, resource, payload}) {
-        NotifyService.notifyDataRequest({
+    static handleDataRequest({productName, deviceName, resource, payload, ts}) {
+        if (resource.startsWith("$")) {
+            if (resource == "$ntp") {
+                this.handleNTP({
+                    payload: JSON.parse(payload.toString()),
+                    ts: ts,
+                    productName: productName,
+                    deviceName: deviceName
+                })
+            }
+        } else {
+            NotifyService.notifyDataRequest({
+                productName: productName,
+                deviceName: deviceName,
+                resource: resource,
+                payload: payload
+            })
+        }
+    }
+
+    static handleNTP({payload, ts, productName, deviceName}) {
+        var data = {
+            device_time: payload.device_time,
+            iothub_recv: ts * 1000,
+            iothub_send: Date.now()
+        }
+        Device.sendCommand({
             productName: productName,
             deviceName: deviceName,
-            resource: resource,
-            payload: payload
+            data: JSON.stringify(data),
+            commandName: "$set_ntp"
         })
     }
 
