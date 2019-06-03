@@ -14,7 +14,7 @@ router.post("/", function (req, res) {
         case "message_publish":
             messageService.dispatchMessage({
                 topic: req.body.topic,
-                payload: req.body.payload,
+                payload: new Buffer(req.body.payload, 'base64'),
                 ts: req.body.ts
             })
     }

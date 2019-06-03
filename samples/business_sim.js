@@ -1,4 +1,4 @@
-require('dotenv').config("../.env")
+require('dotenv').config({path: "../.env"})
 
 const bson = require('bson')
 var amqp = require('amqplib/callback_api');

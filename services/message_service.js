@@ -34,7 +34,7 @@ class MessageService {
                         dataType: result[3],
                         messageId: result[4],
                         ts: ts,
-                        payload: new Buffer(payload, 'base64')
+                        payload: payload
                     })
                 }
             })
@@ -44,7 +44,7 @@ class MessageService {
                     MessageService.handleUpdateStatus({
                         productName: result[1],
                         deviceName: result[2],
-                        deviceStatus: new Buffer(payload, 'base64').toString(),
+                        deviceStatus: payload.toString(),
                         ts: ts
                     })
                 }
@@ -52,10 +52,9 @@ class MessageService {
         } else if ((result = cmdRespRegx.exec(topic)) != null) {
             this.checkMessageDuplication(result[6], function (isDup) {
                 if (!isDup) {
-                    var payloadBuffer = new Buffer(payload, 'base64');
                     if (result[1] == "rpc_resp") {
                         var key = `cmd_resp/${result[5]}`;
-                        redisClient.set(key, payloadBuffer)
+                        redisClient.set(key, payload)
                         redisClient.expire(key, 5)
                     } else {
                         MessageService.handleCommandResp({
@@ -64,7 +63,7 @@ class MessageService {
                             ts: ts,
                             command: result[4],
                             requestId: result[5],
-                            payload: payloadBuffer
+                            payload: payload
                         })
                     }
                 }
