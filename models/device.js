@@ -99,7 +99,8 @@ deviceSchema.methods.getACLRule = function () {
     const publish = [
         `upload_data/${this.product_name}/${this.device_name}/+/+`,
         `update_status/${this.product_name}/${this.device_name}/+`,
-        `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`
+        `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`,
+        `rpc_resp/${this.product_name}/${this.device_name}/+/+/+`,
     ]
     const subscribe = []
     const pubsub = []
@@ -137,9 +138,9 @@ deviceSchema.post("remove", function (device, next) {
     next()
 })
 
-deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl = undefined}) {
+deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl = undefined, commandType="cmd"}) {
     var requestId = new ObjectId().toHexString()
-    var topic = `cmd/${this.product_name}/${this.device_name}/${commandName}/${encoding}/${requestId}`
+    var topic = `${commandType}/${this.product_name}/${this.device_name}/${commandName}/${encoding}/${requestId}`
     if (ttl != null) {
         topic = `${topic}/${Math.floor(Date.now() / 1000) + ttl}`
     }

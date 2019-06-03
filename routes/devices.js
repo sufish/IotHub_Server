@@ -3,6 +3,7 @@ var Device = require("../models/device")
 var shortid = require("shortid")
 var router = express.Router();
 var Connection = require('../models/connection')
+var UtilsService = require('../services/utils_service')
 
 
 router.post("/", function (req, res) {
@@ -115,21 +116,38 @@ router.put("/:productName/:deviceName/resume", function (req, res) {
 router.post("/:productName/:deviceName/command", function (req, res) {
     var productName = req.params.productName
     var deviceName = req.params.deviceName
+    var useRpc = (req.body.use_rpc == "true")
     Device.findOne({"product_name": productName, "device_name": deviceName}, function (err, device) {
         if (err) {
             res.send(err)
         } else if (device != null) {
+            var ttl = req.body.ttl != null ? parseInt(req.body.ttl) : null
+            if(useRpc){
+                ttl = 5
+            }
             var requestId = device.sendCommand({
                 commandName: req.body.command,
                 data: req.body.data,
                 encoding: req.body.encoding || "plain",
-                ttl: req.body.ttl != null ? parseInt(req.body.ttl) : null
+                ttl: ttl,
+                commandType: useRpc ? "rpc" : "cmd"
             })
-            res.status(200).json({request_id: requestId})
+            if (useRpc) {
+                UtilsService.waitKey(`cmd_resp/${requestId}`, ttl, function (val) {
+                    if(val == null){
+                        res.status(200).json({error: "device timeout"})
+                    }else{
+                        res.status(200).json({response: val.toString("base64")})
+                    }
+                })
+            } else {
+                res.status(200).json({request_id: requestId})
+            }
         } else {
             res.status(404).send("device not found")
         }
     })
 })
+
 
 module.exports = router

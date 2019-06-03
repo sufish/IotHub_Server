@@ -20,7 +20,7 @@ class MessageService {
     static dispatchMessage({topic, payload, ts} = {}) {
         var dataTopicRule = "upload_data/:productName/:deviceName/:dataType/:messageId";
         var statusTopicRule = "update_status/:productName/:deviceName/:messageId"
-        var cmdRespRule = "cmd_resp/:productName/:deviceName/:commandName/:requestId/:messageId"
+        var cmdRespRule = "(cmd_resp|rpc_resp)/:productName/:deviceName/:commandName/:requestId/:messageId"
         const topicRegx = pathToRegexp(dataTopicRule)
         const statusRegx = pathToRegexp(statusTopicRule)
         const cmdRespRegx = pathToRegexp(cmdRespRule)
@@ -50,16 +50,23 @@ class MessageService {
                 }
             })
         } else if ((result = cmdRespRegx.exec(topic)) != null) {
-            this.checkMessageDuplication(result[5], function (isDup) {
+            this.checkMessageDuplication(result[6], function (isDup) {
                 if (!isDup) {
-                    MessageService.handleCommandResp({
-                        productName: result[1],
-                        deviceName: result[2],
-                        ts: ts,
-                        command: result[3],
-                        requestId: result[4],
-                        payload: new Buffer(payload, 'base64')
-                    })
+                    var payloadBuffer = new Buffer(payload, 'base64');
+                    if (result[1] == "rpc_resp") {
+                        var key = `cmd_resp/${result[5]}`;
+                        redisClient.set(key, payloadBuffer)
+                        redisClient.expire(key, 5)
+                    } else {
+                        MessageService.handleCommandResp({
+                            productName: result[2],
+                            deviceName: result[3],
+                            ts: ts,
+                            command: result[4],
+                            requestId: result[5],
+                            payload: payloadBuffer
+                        })
+                    }
                 }
             })
         }
