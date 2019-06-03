@@ -101,6 +101,7 @@ deviceSchema.methods.getACLRule = function () {
         `update_status/${this.product_name}/${this.device_name}/+`,
         `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`,
         `rpc_resp/${this.product_name}/${this.device_name}/+/+/+`,
+        `get/${this.product_name}/${this.device_name}/+/+`
     ]
     const subscribe = []
     const pubsub = []

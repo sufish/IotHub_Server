@@ -21,9 +21,11 @@ class MessageService {
         var dataTopicRule = "upload_data/:productName/:deviceName/:dataType/:messageId";
         var statusTopicRule = "update_status/:productName/:deviceName/:messageId"
         var cmdRespRule = "(cmd_resp|rpc_resp)/:productName/:deviceName/:commandName/:requestId/:messageId"
+        var dataRequestTopicRule = "get/:productName/:deviceName/:resource/:messageId"
         const topicRegx = pathToRegexp(dataTopicRule)
         const statusRegx = pathToRegexp(statusTopicRule)
         const cmdRespRegx = pathToRegexp(cmdRespRule)
+        const dataRequestRegx = pathToRegexp(dataRequestTopicRule)
         var result = null;
         if ((result = topicRegx.exec(topic)) != null) {
             this.checkMessageDuplication(result[4], function (isDup) {
@@ -68,7 +70,27 @@ class MessageService {
                     }
                 }
             })
+        } else if ((result = dataRequestRegx.exec(topic)) != null) {
+            this.checkMessageDuplication(result[4], function (isDup) {
+                if (!isDup) {
+                    MessageService.handleDataRequest({
+                        productName: result[1],
+                        deviceName: result[2],
+                        resource: result[3],
+                        payload: payload
+                    })
+                }
+            })
         }
+    }
+
+    static handleDataRequest({productName, deviceName, resource, payload}) {
+        NotifyService.notifyDataRequest({
+            productName: productName,
+            deviceName: deviceName,
+            resource: resource,
+            payload: payload
+        })
     }
 
     static handleUploadData({productName, deviceName, ts, payload, messageId, dataType} = {}) {

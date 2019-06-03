@@ -3,6 +3,7 @@ var amqp = require('amqplib/callback_api');
 var uploadDataExchange = "iothub.events.upload_data"
 var updateStatusExchange = "iothub.events.update_status"
 var commandRespExchange = "iothub.events.cmd_resp"
+var dataRequestRespExchange = "iothub.events.data_request"
 var currentChannel = null;
 amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
     if (error0) {
@@ -59,6 +60,17 @@ class NotifyService {
         })
         if(currentChannel != null){
             currentChannel.publish(commandRespExchange, productName, data)
+        }
+    }
+
+    static notifyDataRequest({productName, deviceName, resource, payload}){
+        var data = bson.serialize({
+            device_name: deviceName,
+            resource: resource,
+            payload: payload
+        })
+        if(currentChannel != null){
+            currentChannel.publish(dataRequestRespExchange, productName, data)
         }
     }
 }
