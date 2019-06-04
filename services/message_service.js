@@ -94,6 +94,15 @@ class MessageService {
                     productName: productName,
                     deviceName: deviceName
                 })
+            } else if (resource == "$tags") {
+                Device.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
+                    if (device != null) {
+                        var data = JSON.parse(payload.toString())
+                        if (data.tags_version < device.tags_version) {
+                            device.sendTags()
+                        }
+                    }
+                })
             }
         } else {
             NotifyService.notifyDataRequest({

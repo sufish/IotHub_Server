@@ -4,6 +4,7 @@ var shortid = require("shortid")
 var router = express.Router();
 var Connection = require('../models/connection')
 var UtilsService = require('../services/utils_service')
+var DeviceACL = require("../models/device_acl")
 
 
 router.post("/", function (req, res) {
@@ -25,7 +26,16 @@ router.post("/", function (req, res) {
         if (err) {
             res.status(500).send(err)
         } else {
-            res.json({product_name: productName, device_name: deviceName, secret: secret})
+            var aclRule = device.getACLRule()
+            var deviceACL = new DeviceACL({
+                broker_username: device.broker_username,
+                publish: aclRule.publish,
+                subscribe: aclRule.subscribe,
+                pubsub: aclRule.pubsub
+            })
+            deviceACL.save(function () {
+                res.json({product_name: productName, device_name: deviceName, secret: secret})
+            })
         }
     })
 })
@@ -122,7 +132,7 @@ router.post("/:productName/:deviceName/command", function (req, res) {
             res.send(err)
         } else if (device != null) {
             var ttl = req.body.ttl != null ? parseInt(req.body.ttl) : null
-            if(useRpc){
+            if (useRpc) {
                 ttl = 5
             }
             var requestId = device.sendCommand({
@@ -134,9 +144,9 @@ router.post("/:productName/:deviceName/command", function (req, res) {
             })
             if (useRpc) {
                 UtilsService.waitKey(`cmd_resp/${requestId}`, ttl, function (val) {
-                    if(val == null){
+                    if (val == null) {
                         res.status(200).json({error: "device timeout"})
-                    }else{
+                    } else {
                         res.status(200).json({response: val.toString("base64")})
                     }
                 })
@@ -146,6 +156,25 @@ router.post("/:productName/:deviceName/command", function (req, res) {
         } else {
             res.status(404).send("device not found")
         }
+    })
+})
+router.put("/:productName/:deviceName/tags", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    var tags = req.body.tags.split(",")
+    Device.findOne({"product_name": productName, "device_name": deviceName}, function (err, device) {
+        if (err != null) {
+            res.send(err)
+        } else if (device != null) {
+            device.tags = tags
+            device.tags_version += 1
+            device.save()
+            device.sendTags()
+            res.status(200).send("ok")
+        } else {
+            res.status(404).send("device not found")
+        }
+
     })
 })
 

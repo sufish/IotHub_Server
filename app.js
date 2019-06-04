@@ -11,6 +11,7 @@ var deviceRouter = require('./routes/devices');
 var tokensRouter = require('./routes/tokens')
 var webHookeRouter = require('./routes/emqx_web_hook')
 var messageRouter = require('./routes/messages')
+var tagsRouter = require('./routes/tags')
 
 
 var app = express();
@@ -31,6 +32,7 @@ app.use('/devices', deviceRouter);
 app.use('/tokens', tokensRouter);
 app.use('/emqx_web_hook', webHookeRouter)
 app.use('/messages', messageRouter)
+app.use('/tags', tagsRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

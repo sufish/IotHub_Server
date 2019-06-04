@@ -31,9 +31,18 @@ const deviceSchema = new Schema({
 
     //可接入状态
     status: String,
-
     device_status: String,
-    last_status_update: Number
+    last_status_update: Number,
+
+    tags: {
+        type: Array,
+        default: []
+    },
+
+    tags_version: {
+        type: Number,
+        default: 1
+    }
 })
 
 deviceSchema.methods.toJSONObject = function () {
@@ -103,7 +112,7 @@ deviceSchema.methods.getACLRule = function () {
         `rpc_resp/${this.product_name}/${this.device_name}/+/+/+`,
         `get/${this.product_name}/${this.device_name}/+/+`
     ]
-    const subscribe = []
+    const subscribe = [`tags/${this.product_name}/+/cmd/+/+/+/#`]
     const pubsub = []
     return {
         publish: publish,
@@ -120,18 +129,6 @@ deviceSchema.methods.disconnect = function () {
     })
 }
 
-deviceSchema.post("save", function (device, next) {
-    var aclRule = device.getACLRule()
-    var deviceACL = new DeviceACL({
-        broker_username: device.broker_username,
-        publish: aclRule.publish,
-        subscribe: aclRule.subscribe,
-        pubsub: aclRule.pubsub
-    })
-    deviceACL.save(function () {
-        next()
-    })
-})
 
 deviceSchema.post("remove", function (device, next) {
     Connection.deleteMany({device: device._id}).exec()
@@ -139,7 +136,7 @@ deviceSchema.post("remove", function (device, next) {
     next()
 })
 
-deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl = undefined, commandType="cmd"}) {
+deviceSchema.methods.sendCommand = function ({commandName, data, encoding = "plain", ttl = undefined, commandType = "cmd", qos = 1}) {
     return Device.sendCommand({
         productName: this.product_name,
         deviceName: this.device_name,
@@ -147,18 +144,27 @@ deviceSchema.methods.sendCommand = function ({commandName, data, encoding, ttl =
         data: data,
         encoding: encoding,
         ttl: ttl,
-        commandType: commandType
+        commandType: commandType,
+        qos: qos
     })
 }
 
-deviceSchema.statics.sendCommand = function ({productName, deviceName, commandName, data, encoding="plain", ttl = undefined, commandType="cmd"}) {
+deviceSchema.statics.sendCommand = function ({productName, deviceName, commandName, data, encoding = "plain", ttl = undefined, commandType = "cmd", qos = 1}) {
     var requestId = new ObjectId().toHexString()
     var topic = `${commandType}/${productName}/${deviceName}/${commandName}/${encoding}/${requestId}`
     if (ttl != null) {
         topic = `${topic}/${Math.floor(Date.now() / 1000) + ttl}`
     }
-    emqxService.publishTo({topic: topic, payload: data})
+    emqxService.publishTo({topic: topic, payload: data, qos: qos})
     return requestId
+}
+
+deviceSchema.methods.sendTags = function () {
+    this.sendCommand({
+        commandName: "$set_tags",
+        data: JSON.stringify({tags: this.tags || [], tags_version: this.tags_version || 1}),
+        qos: 0
+    })
 }
 
 const Device = mongoose.model("Device", deviceSchema);
