@@ -31,7 +31,10 @@ const deviceSchema = new Schema({
 
     //可接入状态
     status: String,
-    device_status: String,
+    device_status: {
+        type: String,
+        default: "{}"
+    },
     last_status_update: Number,
 
     tags: {
@@ -50,7 +53,8 @@ deviceSchema.methods.toJSONObject = function () {
         product_name: this.product_name,
         device_name: this.device_name,
         secret: this.secret,
-        device_status: JSON.parse(this.device_status)
+        device_status: JSON.parse(this.device_status),
+        tags: this.tags
     }
 }
 
@@ -110,7 +114,8 @@ deviceSchema.methods.getACLRule = function () {
         `update_status/${this.product_name}/${this.device_name}/+`,
         `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`,
         `rpc_resp/${this.product_name}/${this.device_name}/+/+/+`,
-        `get/${this.product_name}/${this.device_name}/+/+`
+        `get/${this.product_name}/${this.device_name}/+/+`,
+        `m2m/${this.product_name}/+/${this.device_name}/+`
     ]
     const subscribe = [`tags/${this.product_name}/+/cmd/+/+/+/#`]
     const pubsub = []
