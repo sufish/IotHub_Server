@@ -3,6 +3,7 @@ const pathToRegexp = require('path-to-regexp')
 const Message = require("../models/message")
 const NotifyService = require("./notify_service")
 const Device = require("../models/device")
+const OTAService = require("../services/ota_service")
 
 class MessageService {
     static checkMessageDuplication(messageId, callback) {
@@ -19,7 +20,7 @@ class MessageService {
 
     static dispatchMessage({topic, payload, ts} = {}) {
         var dataTopicRule = "upload_data/:productName/:deviceName/:dataType/:messageId";
-        var statusTopicRule = "update_status/:productName/:deviceName/:messageId"
+        var statusTopicRule = "(update_status|update_ota_status)/:productName/:deviceName/:messageId"
         var cmdRespRule = "(cmd_resp|rpc_resp)/:productName/:deviceName/:commandName/:requestId/:messageId"
         var dataRequestTopicRule = "get/:productName/:deviceName/:resource/:messageId"
         const topicRegx = pathToRegexp(dataTopicRule)
@@ -41,14 +42,20 @@ class MessageService {
                 }
             })
         } else if ((result = statusRegx.exec(topic)) != null) {
-            this.checkMessageDuplication(result[3], function (isDup) {
+            this.checkMessageDuplication(result[4], function (isDup) {
                 if (!isDup) {
-                    MessageService.handleUpdateStatus({
-                        productName: result[1],
-                        deviceName: result[2],
-                        deviceStatus: payload.toString(),
-                        ts: ts
-                    })
+                    if (result[1] == "update_status") {
+                        MessageService.handleUpdateStatus({
+                            productName: result[2],
+                            deviceName: result[3],
+                            deviceStatus: payload.toString(),
+                            ts: ts
+                        })
+                    } else if (result[1] == "update_ota_status") {
+                        var progress = JSON.parse(payload.toString())
+                        progress.ts = ts
+                        OTAService.updateProgress(result[2], result[3], progress)
+                    }
                 }
             })
         } else if ((result = cmdRespRegx.exec(topic)) != null) {

@@ -115,7 +115,8 @@ deviceSchema.methods.getACLRule = function () {
         `cmd_resp/${this.product_name}/${this.device_name}/+/+/+`,
         `rpc_resp/${this.product_name}/${this.device_name}/+/+/+`,
         `get/${this.product_name}/${this.device_name}/+/+`,
-        `m2m/${this.product_name}/+/${this.device_name}/+`
+        `m2m/${this.product_name}/+/${this.device_name}/+`,
+        `update_ota_status/${this.product_name}/${this.device_name}/+`,
     ]
     const subscribe = [`tags/${this.product_name}/+/cmd/+/+/+/#`]
     const pubsub = []
@@ -162,6 +163,15 @@ deviceSchema.statics.sendCommand = function ({productName, deviceName, commandNa
     }
     emqxService.publishTo({topic: topic, payload: data, qos: qos})
     return requestId
+}
+
+deviceSchema.statics.sendCommandByTag = function({productName, tag, commandName, data, encoding = "plain", ttl = undefined,qos = 1}){
+    var requestId = new ObjectId().toHexString()
+    var topic = `tags/${productName}/${tag}/cmd/${commandName}/${encoding}/${requestId}`
+    if (ttl != null) {
+        topic = `${topic}/${Math.floor(Date.now() / 1000) + ttl}`
+    }
+    emqxService.publishTo({topic: topic, payload: data, qos: qos})
 }
 
 deviceSchema.methods.sendTags = function () {
