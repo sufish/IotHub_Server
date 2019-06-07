@@ -110,6 +110,12 @@ class MessageService {
                         }
                     }
                 })
+            } else if (resource == "$shadow") {
+                Device.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
+                    if (device != null) {
+                        device.sendUpdateShadow()
+                    }
+                })
             }
         } else {
             NotifyService.notifyDataRequest({
@@ -136,16 +142,32 @@ class MessageService {
     }
 
     static handleUploadData({productName, deviceName, ts, payload, messageId, dataType} = {}) {
-        var message = new Message({
-            product_name: productName,
-            device_name: deviceName,
-            payload: payload,
-            message_id: messageId,
-            data_type: dataType,
-            sent_at: ts
-        })
-        message.save()
-        NotifyService.notifyUploadData(message)
+        if (dataType.startsWith("$")) {
+            if (dataType == "$shadow_updated") {
+                Device.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
+                    if (device != null) {
+                        device.updateShadow(JSON.parse(payload.toString()))
+                    }
+                })
+            }else if("$shadow_updated"){
+                Device.findOne({product_name: productName, device_name: deviceName}, function (err, device) {
+                    if (device != null) {
+                        device.reportShadow(JSON.parse(payload.toString()))
+                    }
+                })
+            }
+        } else {
+            var message = new Message({
+                product_name: productName,
+                device_name: deviceName,
+                payload: payload,
+                message_id: messageId,
+                data_type: dataType,
+                sent_at: ts
+            })
+            message.save()
+            NotifyService.notifyUploadData(message)
+        }
     }
 
     static handleUpdateStatus({productName, deviceName, deviceStatus, ts}) {

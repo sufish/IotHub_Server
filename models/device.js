@@ -45,6 +45,14 @@ const deviceSchema = new Schema({
     tags_version: {
         type: Number,
         default: 1
+    },
+    shadow: {
+        type: String,
+        default: JSON.stringify({
+            "state": {},
+            "metadata": {},
+            "version": 0
+        })
     }
 })
 
@@ -54,7 +62,8 @@ deviceSchema.methods.toJSONObject = function () {
         device_name: this.device_name,
         secret: this.secret,
         device_status: JSON.parse(this.device_status),
-        tags: this.tags
+        tags: this.tags,
+        shadow: JSON.parse(this.shadow),
     }
 }
 
@@ -165,7 +174,7 @@ deviceSchema.statics.sendCommand = function ({productName, deviceName, commandNa
     return requestId
 }
 
-deviceSchema.statics.sendCommandByTag = function({productName, tag, commandName, data, encoding = "plain", ttl = undefined,qos = 1}){
+deviceSchema.statics.sendCommandByTag = function ({productName, tag, commandName, data, encoding = "plain", ttl = undefined, qos = 1}) {
     var requestId = new ObjectId().toHexString()
     var topic = `tags/${productName}/${tag}/cmd/${commandName}/${encoding}/${requestId}`
     if (ttl != null) {
@@ -180,6 +189,98 @@ deviceSchema.methods.sendTags = function () {
         data: JSON.stringify({tags: this.tags || [], tags_version: this.tags_version || 1}),
         qos: 0
     })
+}
+
+deviceSchema.methods.updateShadowDesired = function (desired, version) {
+    var ts = Math.floor(Date.now() / 1000)
+    var shadow = JSON.parse(this.shadow)
+    if (version > shadow.version) {
+        shadow.state.desired = shadow.state.desired || {}
+        shadow.metadata.desired = shadow.metadata.desired || {}
+        for (var key in desired) {
+            shadow.state.desired[key] = desired[key]
+            shadow.metadata.desired[key] = {timestamp: ts}
+        }
+        shadow.version = version
+        shadow.timestamp = ts
+        this.shadow = JSON.stringify(shadow)
+        this.save()
+        this.sendUpdateShadow()
+        return true
+    } else {
+        return false
+    }
+}
+
+deviceSchema.methods.sendUpdateShadow = function () {
+    this.sendCommand({
+        commandName: "$update_shadow",
+        data: this.shadow,
+        qos: 0
+    })
+}
+
+deviceSchema.methods.updateShadow = function (shadowUpdated) {
+    var ts = Math.floor(Date.now() / 1000)
+    var shadow = JSON.parse(this.shadow)
+    if (shadow.version == shadowUpdated.version) {
+        if (shadowUpdated.state.desired == null) {
+            shadow.state.desired = shadow.state.desired || {}
+            shadow.state.reported = shadow.state.reported || {}
+            shadow.metadata.reported = shadow.metadata.reported || {}
+            for (var key in shadow.state.desired) {
+                if (shadow.state.desired[key] != null) {
+                    shadow.state.reported[key] = shadow.state.desired[key]
+                    shadow.metadata.reported[key] = {timestamp: ts}
+                } else {
+                    delete(shadow.state.reported[key])
+                    delete(shadow.metadata.reported[key])
+                }
+            }
+            shadow.timestamp = ts
+            shadow.version = shadow.version + 1
+            delete(shadow.state.desired)
+            delete(shadow.metadata.desired)
+            this.shadow = JSON.stringify(shadow)
+            this.save()
+            this.sendCommand({
+                commandName: "$shadow_reply",
+                data: JSON.stringify({status: "success", timestamp: ts, version: shadow.version}),
+                qos: 0
+            })
+        }
+    } else {
+        this.sendUpdateShadow()
+    }
+}
+
+deviceSchema.methods.reportShadow = function (shadowReported) {
+    var ts = Math.floor(Date.now() / 1000)
+    var shadow = JSON.parse(this.shadow)
+    if (shadow.version == shadowReported.version) {
+        shadow.state.reported = shadow.state.reported || {}
+        shadow.metadata.reported = shadow.metadata.reported || {}
+        for (var key in shadowReported.state.reported) {
+            if (shadowReported.state.reported[key] != null) {
+                shadow.state.reported[key] = shadowReported.state.reported[key]
+                shadow.metadata.reported[key] = {timestamp: ts}
+            } else {
+                delete(shadow.state.reported[key])
+                delete(shadow.metadata.reported[key])
+            }
+        }
+        shadow.timestamp = ts
+        shadow.version = shadow.version + 1
+        this.shadow = JSON.stringify(shadow)
+        this.save()
+        this.sendCommand({
+            commandName: "$shadow_reply",
+            data: JSON.stringify({status: "success", timestamp: ts, version: shadow.version}),
+            qos: 0
+        })
+    } else {
+        this.sendUpdateShadow()
+    }
 }
 
 const Device = mongoose.model("Device", deviceSchema);

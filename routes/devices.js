@@ -178,5 +178,25 @@ router.put("/:productName/:deviceName/tags", function (req, res) {
     })
 })
 
+router.put("/:productName/:deviceName/shadow", function (req, res) {
+    var productName = req.params.productName
+    var deviceName = req.params.deviceName
+    Device.findOne({"product_name": productName, "device_name": deviceName}, function (err, device) {
+        if (err != null) {
+            res.send(err)
+        } else if (device != null) {
+            if(device.updateShadowDesired(req.body.desired, req.body.version)){
+                res.status(200).send("ok")
+            }else{
+                res.status(409).send("version out of date")
+            }
+        } else {
+            res.status(404).send("device not found")
+        }
+
+    })
+})
+
+
 
 module.exports = router
