@@ -11,6 +11,13 @@ const influx = new Influx.InfluxDB({
             tags: [
                 'product_name', 'device_name'
             ]
+        },
+        {
+            measurement: 'connection_count',
+            fields: {
+                count: Influx.FieldType.INTEGER
+            },
+            tags: ["node_name"]
         }
     ]
 })
@@ -24,6 +31,21 @@ class InfluxDBService {
                 tags: {product_name: productName, device_name: deviceName},
                 fields: {connected: connected},
                 timestamp: timestamp
+            }
+        ], {
+            precision: 's',
+        }).catch(err => {
+            console.error(`Error saving data to InfluxDB! ${err.stack}`)
+        })
+    }
+
+    static writeConnectionCount(nodeName, count) {
+        influx.writePoints([
+            {
+                measurement: 'connection_count',
+                tags: {node_name: nodeName},
+                fields: {count: count},
+                timestamp: Math.floor(Date.now() / 1000)
             }
         ], {
             precision: 's',
