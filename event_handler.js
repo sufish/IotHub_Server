@@ -35,8 +35,8 @@ amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
                 addHandler(channel, "iothub_message_publish", "message.publish", function (event) {
                     messageService.dispatchMessage({
                         topic: event.topic,
-                        payload: event.payload,
-                        ts: Math.floor(event.pubished_at / 1000)
+                        payload: event.payload.buffer,
+                        ts: Math.floor(event.published_at / 1000)
                     })
                 })
             }
