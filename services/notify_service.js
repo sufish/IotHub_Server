@@ -17,6 +17,7 @@ amqp.connect(process.env.RABBITMQ_URL, function (error0, connection) {
                 channel.assertExchange(uploadDataExchange, 'direct', {durable: true})
                 channel.assertExchange(updateStatusExchange, 'direct', {durable: true})
                 channel.assertExchange(commandRespExchange, 'direct', {durable: true})
+                channel.assertExchange(dataRequestRespExchange, 'direct', {durable: true})
             }
         });
     }
